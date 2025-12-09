@@ -1,63 +1,51 @@
 import os
+import asyncio
+from fastapi import FastAPI
+import uvicorn
 import discord
 from discord.ext import commands
-import asyncio
-from aiohttp import web
  
-# ====== Discord Token ======
-TOKEN = os.environ.get("DISCORD_TOKEN")
+# ===== Discord Bot 設定 =====
+TOKEN = os.getenv("DISCORD_TOKEN")  # Cloud Run に環境変数でセット
+INTENTS = discord.Intents.default()
+INTENTS.message_content = True
  
-if TOKEN is None:
-    raise RuntimeError("ERROR: 環境変数 DISCORD_TOKEN が設定されていません。")
+bot = commands.Bot(command_prefix="!", intents=INTENTS)
  
- 
-# ====== Discord Bot 設定 ======
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
- 
- 
-# ====== Bot の準備完了イベント ======
 @bot.event
 async def on_ready():
-    print(f"Bot logged in as {bot.user}")
+    print(f"Logged in as {bot.user}")
  
- 
-# ====== テストコマンド ======
 @bot.command()
 async def ping(ctx):
     await ctx.send("Pong!")
  
+# ===== Web サーバー (Cloud Run 用) =====
+app = FastAPI()
  
-# ====== Cloud Run 用 HTTP サーバー ======
-async def handle(request):
-    return web.Response(text="Bot is running!")
+@app.get("/")
+def root():
+    return {"status": "Bot is running on Cloud Run!"}
  
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get("/", handle)
+# ===== Discord Bot と Web サーバーを同時に実行する =====
+async def start_bot():
+    """Discord Bot を非同期で起動"""
+    await bot.start(TOKEN)
  
-    runner = web.AppRunner(app)
-    await runner.setup()
- 
+async def start_web():
+    """FastAPI を Cloud Run のポートで起動"""
     port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
  
-    print(f"HTTP server started on port {port}")
- 
- 
-# ====== Bot と Web サーバーを同時起動 ======
 async def main():
-    # 並列で起動
+    # discord bot と web server を並列実行
     await asyncio.gather(
-        start_web_server(),
-        bot.start(TOKEN)
+        start_bot(),
+        start_web(),
     )
  
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Bot stopped.")
+    asyncio.run(main())
  
