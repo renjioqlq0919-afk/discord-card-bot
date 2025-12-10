@@ -24,7 +24,7 @@ def verify_signature(request: Request, body: bytes):
  
     try:
         verify_key = nacl.signing.VerifyKey(bytes.fromhex(DISCORD_PUBLIC_KEY))
-        verify_key.verify(f"{timestamp}".encode() + body, bytes.fromhex(signature))
+        verify_key.verify(timestamp.encode() + body, bytes.fromhex(signature))
         return True
     except nacl.exceptions.BadSignatureError:
         return False
@@ -40,23 +40,21 @@ async def interactions(request: Request):
  
     data = json.loads(body)
  
-    # ① PING (Discord がURL検証で送ってくる)
+    # PING
     if data["type"] == 1:
         return JSONResponse(content={"type": 1})
  
-    # ② Slash Command の処理
-    if data["type"] == 2:  # APPLICATION_COMMAND
+    # Slash commands
+    if data["type"] == 2:
         cmd = data["data"]["name"]
  
         if cmd == "hello":
-            return JSONResponse(content={
+            return {
                 "type": 4,
-                "data": {
-                    "content": "Hello from Cloud Run!"
-                }
-            })
+                "data": {"content": "Hello from Cloud Run!"}
+            }
  
-    return JSONResponse(content={"type": 4, "data": {"content": "Unknown command"}})
+    return {"type": 4, "data": {"content": "Unknown command"}}
  
  
 @app.get("/")
@@ -66,7 +64,7 @@ def health():
  
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8080))  # Cloud Run 必須
+    port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
 uvicorn.run() - Complete Guide
 Master uvicorn.run() function for programmatic ASGI server control
