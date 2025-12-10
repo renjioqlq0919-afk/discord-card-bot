@@ -11,6 +11,7 @@ DISCORD_PUBLIC_KEY = os.getenv("DISCORD_PUBLIC_KEY")
 if not DISCORD_PUBLIC_KEY:
     raise ValueError("DISCORD_PUBLIC_KEY is not set in environment variables")
  
+ 
 # ---- Discord Signature Verification ----
 def verify_signature(request: Request, body: bytes):
     signature = request.headers.get("X-Signature-Ed25519")
@@ -54,8 +55,7 @@ async def interactions(request: Request):
                 "data": {"content": "Hello from Cloud Run!"}
             }
  
-    return {"type": 4, "data": {"content": "Unknown command"}}
- 
+        return {"type": 4, "data": {"content": "Unknown command"}}
  
 @app.get("/")
 def health():
